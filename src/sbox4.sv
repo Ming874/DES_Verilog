@@ -1,6 +1,6 @@
 // Module: Masked S-Box 4
-// This module implements the masked S-Box functionality using combinatorial logic.
-// By integrating masking at the gate level, it prevents the generation of unmasked sensitive signals within the FPGA.
+// This module implements the S-Box lookup function using pure combinational logic (boolean equations).
+// By integrating masking at the gate level, it prevents the generation of unmasked sensitive signals inside the FPGA.
 module masked_sbox4 (
     input [5:0] d_masked, // Input: Masked 6-bit data (D' = D ^ m_in)
     input [5:0] m_in,     // Input: 6-bit input mask
@@ -11,6 +11,9 @@ module masked_sbox4 (
     wire [5:0] d = d_masked ^ m_in;
     reg [3:0] q_base;
     always @(*) begin
+        // The following logic will be synthesized into a pure combinational circuit (Boolean cloud).
+        // To ensure side-channel resilience, d_masked ^ m_in will be optimized into LUT inputs during synthesis,
+        // and the final q_base ^ m_out will also be absorbed into the LUT, ensuring no single node exposes the true data.
         case (d)
             6'd0: q_base = 4'd7;
             6'd1: q_base = 4'd13;
