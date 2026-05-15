@@ -33,48 +33,30 @@ module tb_des;
         // Initialize System State
         rst_n = 0;
         plaintext = 64'h0;
-        key = 64'h0;
-        
-        // Provide a random mask. In real hardware this should come from a TRNG,
-        // but for simulation we provide a fixed value to observe its protection and recovery effect.
+        key = 64'h0123456789ABCDEF; // Fixed key for streaming test
         mask_in = 64'hA5A5A5A55A5A5A5A; 
 
         #20;
         rst_n = 1;
 
-        // Test Case 1:
-        // Key: 0123456789ABCDEF
-        // Plaintext: 4E6F772069732074
-        // Expected Ciphertext: 3FA40E8A984D4815
-        key = 64'h0123456789ABCDEF;
-        plaintext = 64'h4E6F772069732074;
+        // Start streaming data
+        $display("--- Starting Streaming Test ---");
+        for (int i = 0; i < 32; i = i + 1) begin
+            plaintext = 64'h4E6F772069732074 + i;
+            @(posedge clk);
+        end
         
-        // Wait for pipeline to fill (16 cycles) then check done signal
-        wait(done);
-        #1;
-        $display("Time: %0t | Key: %h | Plaintext: %h | Ciphertext: %h", $time, key, plaintext, ciphertext);
-        
-        // Test Case 2:
-        // Key: 133457799BBCDFF1
-        // Plaintext: 0123456789ABCDEF
-        // Expected Ciphertext: 85E813540F0AB405
-        #10;
-        key = 64'h133457799BBCDFF1;
-        plaintext = 64'h0123456789ABCDEF;
-        
-        // Wait long enough for new data to flow through the 16-stage pipeline
-        #200; 
-        $display("Time: %0t | Key: %h | Plaintext: %h | Ciphertext: %h", $time, key, plaintext, ciphertext);
+        // Wait for last data to exit pipeline
+        repeat(20) @(posedge clk);
 
-        // End simulation
-        #100;
+        $display("--- Streaming Test Finished ---");
         $finish;
     end
 
     // Observe valid output on every positive clock edge
     always @(posedge clk) begin
         if (done) begin
-            $display("Valid pipeline output at %0t: %h", $time, ciphertext);
+            $display("Time: %0t | Ciphertext Out: %h", $time, ciphertext);
         end
     end
 

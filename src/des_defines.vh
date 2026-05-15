@@ -3,9 +3,9 @@
 `define DES_DEFINES_VH
 
 // DES Hardware Constants and Permutation Functions
-// Ps. 為了避免在不同合成器中遇到 array parameters 傳遞問題，故將各置換表實作為 automatic functions
+// Automatic: 每次呼叫函數時，都為該次呼叫產生獨立的動態變數空間，確保它是 re-entrant
 
-// 初始置換函數 Initial Permutation, IP: 將 64-bit Plaintext 依 DES 的 IP 表重排
+// Initial Permutation, IP: 將 64-bit Plaintext 依 DES 的 IP 表重排
 function automatic [63:0] permute_IP(input [63:0] data);
     permute_IP = {
         data[64-58], data[64-50], data[64-42], data[64-34], data[64-26], data[64-18], data[64-10], data[64-2],
@@ -19,7 +19,7 @@ function automatic [63:0] permute_IP(input [63:0] data);
     };
 endfunction
 
-// 逆初始置換函數 Inverse Initial Permutation, IP_INV: 在 16 輪加密後，將最後的 64-bit 資料重排，得到最終 Ciphertext
+// Inverse Initial Permutation, IP_INV: 在 16 輪加密後，將最後的 64-bit 資料重排，得到最終 Ciphertext
 function automatic [63:0] permute_IP_INV(input [63:0] data);
     permute_IP_INV = {
         data[64-40], data[64-8],  data[64-48], data[64-16], data[64-56], data[64-24], data[64-64], data[64-32],
@@ -33,7 +33,7 @@ function automatic [63:0] permute_IP_INV(input [63:0] data);
     };
 endfunction
 
-// 擴展置換函數 Expansion Permutation, E: 接收右半部的 32-bit 資料，將其擴充為 48-bit 以便後續與子金鑰進行 XOR。
+// Expansion Permutation, E: 將右半部的 32-bit 資料擴充為 48-bit 以便後續與子金鑰進行 XOR。
 function automatic [47:0] expand_32_48(input [31:0] data);
     expand_32_48 = {
         data[32-32], data[32-1],  data[32-2],  data[32-3],  data[32-4],  data[32-5],
@@ -47,7 +47,7 @@ function automatic [47:0] expand_32_48(input [31:0] data);
     };
 endfunction
 
-// P 置換函數 Permutation, P: 在 S-Box 取代完後，將 32-bit 的輸出進一步打亂，以增加加密的混淆性。
+// P Permutation, P: 在 S-Box 取代完後，將 32-bit 輸出進一步打亂，增加加密混淆性。
 function automatic [31:0] permute_32(input [31:0] data);
     permute_32 = {
         data[32-16], data[32-7],  data[32-20], data[32-21],

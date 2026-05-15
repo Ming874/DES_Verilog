@@ -2,10 +2,10 @@
 // This module implements the S-Box lookup function using pure combinational logic (boolean equations).
 // By integrating masking at the gate level, it prevents the generation of unmasked sensitive signals inside the FPGA.
 module masked_sbox3 (
-    input [5:0] d_masked, // Input: Masked 6-bit data (D' = D ^ m_in)
-    input [5:0] m_in,     // Input: 6-bit input mask
-    input [3:0] m_out,    // Input: Expected 4-bit output mask (for re-masking)
-    output [3:0] q_masked // Output: Masked 4-bit data protected by the new mask (Q' = Q ^ m_out)
+    input [5:0] d_masked, // Masked 6-bit data
+    input [5:0] m_in,     // 6-bit input mask
+    input [3:0] m_out,    // Expected 4-bit output mask (for re-masking)
+    output [3:0] q_masked // Masked 4-bit data protected by the new mask (Q' = Q ^ m_out)
 );
     // Decode the internal true value to build the truth table. The synthesizer will merge this with the case statement.
     wire [5:0] d = d_masked ^ m_in;
