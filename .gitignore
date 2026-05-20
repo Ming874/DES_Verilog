@@ -1,0 +1,42 @@
+# Verilog/SystemVerilog simulation executables
+des_sim
+des_sim_v
+*.out
+*.vvp
+
+# Waveform dumps
+dump.vcd
+*.vcd
+*.fst
+*.lxt
+*.lxt2
+
+# Icarus Verilog / simulation temporary files
+*.log
+*.tmp
+
+# Verilator outputs
+obj_dir/
+
+# Vivado / FPGA tool generated files
+*.jou
+*.str
+*.wdb
+*.pb
+*.dcp
+*.bit
+*.runs/
+*.cache/
+*.hw/
+*.ip_user_files/
+
+# ModelSim / Questa
+work/
+transcript
+vsim.wlf
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json

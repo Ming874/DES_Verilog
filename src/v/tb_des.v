@@ -13,6 +13,7 @@ module tb_des;
     reg [63:0] mask_in;        // Test initial random mask
     wire [63:0] ciphertext;    // Ciphertext output from DUT
     wire done;                 // Done signal from DUT (indicates valid pipeline output)
+    integer i;
 
     // Instantiate Device Under Test
     des_top dut (
@@ -47,7 +48,7 @@ module tb_des;
 
         // Start streaming data
         $display("--- Starting Streaming Test ---");
-        for (int i = 0; i < 32; i = i + 1) begin
+        for (i = 0; i < 32; i = i + 1) begin
             plaintext = 64'h4E6F772069732074 + i;
             @(posedge clk);
         end
