@@ -2,7 +2,7 @@
 `timescale 1ns/1ps
 
 // Module: DES Simulation Testbench
-// Used to verify the functional correctness and timing behavior of the 16-stage pipelined DES accelerator.
+// Verifies functional correctness and per-data key pipelining.
 
 module tb_des;
 
@@ -17,60 +17,79 @@ module tb_des;
     wire out_valid;            // Output valid signal from DUT (indicates valid pipeline output)
     integer i;
 
-    // Instantiate Device Under Test
     des_top dut (
         .clk(clk),
         .rst_n(rst_n),
         .in_valid(in_valid),
-
         .plaintext(plaintext),
         .key(key),
         .mask_in(mask_in),
-
         .ciphertext(ciphertext),
         .out_valid(out_valid)
     );
 
-    // waveform dumping for simulation
     initial begin
         $dumpfile("dump.vcd");
         $dumpvars(0, tb_des);
     end
 
-    // Clock Generation (10 ns period, 100 MHz)
     initial clk = 0;
     always #5 clk = ~clk;
 
     initial begin
-        // Initialize System State
         rst_n = 0;
         plaintext = 64'h0;
-        key = 64'h0123456789ABCDEF; // Fixed key for streaming test
+        key = 64'h0;
         mask_in = 64'hA5A5A5A55A5A5A5A; 
 
         #20;
         rst_n = 1;
         in_valid = 1;
-        // Start streaming data
-        $display("--- Starting Streaming Test ---");
-        for (i = 0; i < 16; i = i + 1) begin
-            plaintext = 64'h4E6F772069732074 + i;
+
+        $display("--- Starting Per-Data Keying Verification ---");
+        
+        // Cycle 0: Case 1
+        plaintext = 64'h4E6F772069732074;
+        key = 64'h0123456789ABCDEF;
+        @(posedge clk);
+
+        // Cycle 1: Case 2 (Different key and data)
+        plaintext = 64'h0123456789ABCDEF;
+        key = 64'h133457799BBCDFF1;
+        @(posedge clk);
+
+        // Cycle 2-15: Stream more data with different keys
+        for (i = 0; i < 14; i = i + 1) begin
+            plaintext = 64'hAAAA_AAAA_AAAA_AAAA + i;
+            key = 64'hFFFF_FFFF_FFFF_FFFF - i;
             @(posedge clk);
         end
 
         in_valid = 0;
         
-        // Wait for last data to exit pipeline
-        repeat(16) @(posedge clk);
+        // Wait for all 16 results
+        repeat(32) @(posedge clk);
 
-        $display("--- Streaming Test Finished ---");
+        $display("--- Verification Finished ---");
         $finish;
     end
 
-    // Observe valid output on every positive clock edge
+    // Result Checker
+    reg [4:0] out_cnt = 0;
     always @(posedge clk) begin
         if (out_valid) begin
-            $display("Time: %0t | Ciphertext Out: %h", $time, ciphertext);
+            out_cnt <= out_cnt + 1;
+            case (out_cnt)
+                0: begin
+                    $display("Time: %0t | Case 1 | Ciphertext: %h | Expected: 3fa40e8a984d4815", $time, ciphertext);
+                    if (ciphertext !== 64'h3fa40e8a984d4815) $display(">> ERROR: Case 1 Mismatch!");
+                end
+                1: begin
+                    $display("Time: %0t | Case 2 | Ciphertext: %h | Expected: 85e813540f0ab405", $time, ciphertext);
+                    if (ciphertext !== 64'h85e813540f0ab405) $display(">> ERROR: Case 2 Mismatch!");
+                end
+                default: $display("Time: %0t | Case %0d | Ciphertext: %h", $time, out_cnt + 1, ciphertext);
+            endcase
         end
     end
 

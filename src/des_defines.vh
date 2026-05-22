@@ -61,4 +61,32 @@ function automatic [31:0] permute_32(input [31:0] data);
     };
 endfunction
 
+// PC-1 Permutation: Discard 8 parity bits and rearrange the remaining 56 bits
+function automatic [55:0] permute_PC1(input [63:0] key);
+    permute_PC1 = {
+        key[64-57], key[64-49], key[64-41], key[64-33], key[64-25], key[64-17], key[64-9],
+        key[64-1],  key[64-58], key[64-50], key[64-42], key[64-34], key[64-26], key[64-18],
+        key[64-10], key[64-2],  key[64-59], key[64-51], key[64-43], key[64-35], key[64-27],
+        key[64-19], key[64-11], key[64-3],  key[64-60], key[64-52], key[64-44], key[64-36],
+        key[64-63], key[64-55], key[64-47], key[64-39], key[64-31], key[64-23], key[64-15],
+        key[64-7],  key[64-62], key[64-54], key[64-46], key[64-38], key[64-30], key[64-22],
+        key[64-14], key[64-6],  key[64-61], key[64-53], key[64-45], key[64-37], key[64-29],
+        key[64-21], key[64-13], key[64-5],  key[64-28], key[64-20], key[64-12], key[64-4]
+    };
+endfunction
+
+// PC-2 Permutation: Selects 48 bits from the 56-bit shifted key state
+function automatic [47:0] permute_PC2(input [55:0] combined);
+    permute_PC2 = {
+        combined[56-14], combined[56-17], combined[56-11], combined[56-24], combined[56-1],  combined[56-5],
+        combined[56-3],  combined[56-28], combined[56-15], combined[56-6],  combined[56-21], combined[56-10],
+        combined[56-23], combined[56-19], combined[56-12], combined[56-4],  combined[56-26], combined[56-8],
+        combined[56-16], combined[56-7],  combined[56-27], combined[56-20], combined[56-13], combined[56-2],
+        combined[56-41], combined[56-52], combined[56-31], combined[56-37], combined[56-47], combined[56-55],
+        combined[56-30], combined[56-40], combined[56-51], combined[56-45], combined[56-33], combined[56-48],
+        combined[56-44], combined[56-49], combined[56-39], combined[56-56], combined[56-34], combined[56-53],
+        combined[56-46], combined[56-42], combined[56-50], combined[56-36], combined[56-29], combined[56-32]
+    };
+endfunction
+
 `endif

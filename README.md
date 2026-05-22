@@ -12,6 +12,7 @@ This project implements a high-performance, 16-stage pipelined DES (Data Encrypt
 ### 1. High-Throughput 16-Stage Pipeline
 Unlike iterative DES implementations that reuse a single round module, this design fully unfolds the 16 rounds into a linear pipeline.
 *   **Performance**: Achieves a throughput of **one 64-bit ciphertext per clock cycle** after the initial 16-cycle latency.
+*   **Per-Data Keying**: The key schedule is fully pipelined. Each 64-bit plaintext entering the pipeline can be associated with a **unique 64-bit key**. This allows for high-speed encryption/decryption of multiple independent streams or frequent key rotations without any pipeline stalls.
 *   **Critical Path**: By inserting registers between each round, the critical path is limited to a single Feistel function and a few XOR gates, allowing for high $F_{max}$.
 *   **Synchronicity**: The key schedule and data path are perfectly aligned, ensuring that subkeys are available exactly when the corresponding data chunk reaches a pipeline stage.
 
