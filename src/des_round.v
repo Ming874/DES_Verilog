@@ -14,6 +14,7 @@ module des_round_stage (
     input [31:0] ML_in,         // LH corresponding mask
     input [31:0] MR_in,         // RH corresponding mask
     input [47:0] K_in,          // 48-bit subkey for the current round
+    input [31:0] rnd_mask,      // Random mask for re-masking
     input in_valid,             // Input valid signal
 
     output reg [31:0] L_out,    // Updated LH masked data
@@ -31,6 +32,7 @@ module des_round_stage (
         .R_masked(R_in),
         .MR_in(MR_in),
         .K(K_in),
+        .rnd_mask(rnd_mask),
         .F_masked(f_out),
         .MF_out(m_f_out)
     );

@@ -40,3 +40,6 @@ vsim.wlf
 Thumbs.db
 .vscode/*
 !.vscode/settings.json
+
+# output files
+output.txt

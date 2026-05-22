@@ -1,5 +1,3 @@
-`include "des_defines.vh"
-
 module des_top (
     input clk,                 // System clock
     input rst_n,               // Asynchronous active-low reset
@@ -13,19 +11,34 @@ module des_top (
     output out_valid           // Output valid signal
 );
 
+    `include "des_defines.vh"
+
 
     // Initial Permutation, IP
     wire [63:0] ip_data;
     assign ip_data = permute_IP(plaintext);
 
+    wire [63:0] lfsr_out;
+    lfsr_64 prng (
+        .clk(clk),
+        .rst_n(rst_n),
+        .load(1'b0), // Could be connected to a 'seed_load' signal if needed
+        .seed(64'h0),
+        .q(lfsr_out)
+    );
+
+    // Combine input mask with LFSR for dynamic masking
+    // If mask_in is fixed in TB, the result will be dynamic.
+    wire [63:0] dynamic_mask = mask_in ^ lfsr_out;
+
     // Masking Initialization
     // In the entire encryption/decryption process, the true data D is always hidden in D' (Masked Data), D' = D ^ M.
-    wire [63:0] masked_plaintext = plaintext ^ mask_in;
+    wire [63:0] masked_plaintext = plaintext ^ dynamic_mask;
     // Apply IP to the masked data
     wire [63:0] ip_masked_data = permute_IP(masked_plaintext);
     
     // To decode correctly later, we must also apply the same permutation to the mask itself to track its position.
-    wire [63:0] ip_mask = permute_IP(mask_in);
+    wire [63:0] ip_mask = permute_IP(dynamic_mask);
 
     // Split the 64-bit data and mask into left and right halves (L0, R0)
     wire [31:0] L0_masked = ip_masked_data[63:32];
@@ -62,6 +75,9 @@ module des_top (
     // Initialize valid of stage 0
     assign valid_stages[0] = in_valid;
 
+    // Use lower 32 bits of LFSR for internal re-masking
+    wire [31:0] rnd_mask = lfsr_out[31:0];
+
     // Use generate block to instantiate 16 independent DES round modules
     genvar i;
     generate
@@ -76,6 +92,7 @@ module des_top (
                 .MR_in(MR_stages[(i*32)+31:(i*32)]),
 
                 .K_in(subkeys[(i*48)+47:(i*48)]), // Feed the corresponding round subkey
+                .rnd_mask(rnd_mask),             // Pass the dynamic LFSR mask
 
                 .in_valid(valid_stages[i]),
 
