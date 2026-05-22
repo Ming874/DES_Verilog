@@ -1,94 +1,89 @@
+# 16-Stage Pipelined DES Hardware Accelerator with First-Order Boolean Masking for SCA Resilience
 
-# Implementation of a 16-Stage Pipelined DES Hardware Accelerator with First-Order Boolean Masking for SCA Resilience
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Verilog](https://img.shields.io/badge/Language-Verilog%202012-blue.svg)](https://en.wikipedia.org/wiki/Verilog)
 
-This project implements a high-performance 16-stage pipelined DES hardware accelerator with **side-channel attack (SCA) resilience**. The entire project is written in SystemVerilog, focusing not only on achieving extremely high throughput (outputting one 64-bit ciphertext per clock cycle) but also deeply integrating **first-order boolean masking** protection mechanisms at the hardware architecture level.
-
-![alt text](./Images/Schematic.png)
+This project implements a high-performance, 16-stage pipelined DES (Data Encryption Standard) hardware accelerator featuring **First-Order Boolean Masking** and a **64-bit LFSR-based dynamic re-masking system** to defend against Side-Channel Attacks (SCA), such as Differential Power Analysis (DPA).
 
 ---
 
-## Key Features
+## Deep Architectural Analysis
 
-### 1. 16-Stage Pipeline
-*   **Extreme Throughput**: Fully unfolds the 16 rounds of the DES algorithm, inserting pipeline registers between each round.
-*   **Zero-Dead-Cycle Latency**: After an initial latency of 16 clock cycles, the system achieves a remarkable throughput of **one 64-bit ciphertext output per clock cycle**.
-*   **Critical Path Optimization**: Each pipeline stage contains only a single Feistel operation and XOR logic. This significantly shortens the critical path, facilitating extremely high operating frequencies ($F_{max}$) on FPGAs or ASICs.
+### 1. High-Throughput 16-Stage Pipeline
+Unlike iterative DES implementations that reuse a single round module, this design fully unfolds the 16 rounds into a linear pipeline.
+*   **Performance**: Achieves a throughput of **one 64-bit ciphertext per clock cycle** after the initial 16-cycle latency.
+*   **Critical Path**: By inserting registers between each round, the critical path is limited to a single Feistel function and a few XOR gates, allowing for high $F_{max}$.
+*   **Synchronicity**: The key schedule and data path are perfectly aligned, ensuring that subkeys are available exactly when the corresponding data chunk reaches a pipeline stage.
 
-### 2. First-Order Boolean Masking
-*   **Power Signature Decoupling**: To defend against side-channel attacks such as Differential Power Analysis (DPA), the system mixes a 64-bit random mask ($M_{in}$) at the very initial stage of plaintext input.
-*   **Dual-Rail Data Flow**: Throughout the 16-stage pipeline, the true data $D$ never exists in plaintext form on any physical wire. All transmissions and computations flow synchronously along two parallel paths: the "masked data" ($D' = D \oplus M$) and the "mask value" ($M$).
-*   **Re-masking**: Following the non-linear S-Box substitution, the system introduces a new mask value for re-masking, ensuring that power consumption noise across different rounds remains completely randomized. *(Note: In a physical chip implementation, this new mask must be dynamically provided by a True Random Number Generator (TRNG))*.
+### 2. First-Order Boolean Masking Theory
+The core security feature is the decoupling of intermediate data from physical power consumption.
+*   **Masking Equation**: Every data bit $x$ is represented as a pair $(x_m, m)$ such that $x = x_m \oplus m$.
+*   **Linear Operations**: Operations like IP, IP_INV, Expansion (E), and Permutation (P) are linear with respect to XOR. Thus, $E(x \oplus m) = E(x) \oplus E(m)$. The mask $m$ is simply transformed by the same function.
+*   **Non-Linear Operations (S-Boxes)**: This is where SCA leakage is most critical. We use **Masked S-Boxes** that take $(x \oplus m_{in})$ and $m_{in}$ as inputs and produce $(S(x) \oplus m_{out})$ using $m_{out}$ as a re-masking value.
 
-### 3. Pure Combinational Logic S-Boxes (Boolean Equation S-Boxes)
-*   **ROM-Less Implementation**: Traditional DES designs often utilize Read-Only Memory (ROM) look-up tables to implement S-Boxes, which are prone to leakage in masked designs. This project implements all 8 S-Boxes entirely using **pure boolean combinational logic**.
-*   **Gate-Level Mask Absorption**: Through synthesizer optimization, the mask decoding ($D' \oplus M_{in}$) and re-masking ($Q \oplus M_{out}$) operations are directly absorbed into the Look-Up Tables (LUTs). This guarantees that no unmasked intermediate transitional states appear on any FPGA routing node.
+### 3. Dynamic Re-Masking via 64-bit LFSR
+The system incorporates a **64-bit Linear Feedback Shift Register (LFSR)** (often referred to as a "Pseudo-Random Number Generator") to provide entropy for the masking logic.
+*   **Initial Masking**: The user-provided `mask_in` is XORed with the LFSR's 64-bit output to create a **spatially and temporally dynamic initial mask**.
+*   **Round-Level Re-masking**: Each round's S-Box output is protected by a fresh 32-bit `rnd_mask` sliced from the LFSR. This ensures that even if an attacker attempts to correlate power traces across rounds, the masks are constantly changing, breaking the first-order correlation.
+*   **LFSR Polynomial**: $x^{64} + x^{63} + x^{61} + x^{60} + 1$. This primitive polynomial ensures a maximum period of $2^{64}-1$.
 
-### 4. Parallel Key Schedule
-*   Constructs the 16-round subkeys utilizing pure combinational logic.
-*   Synchronously supplies the 48-bit subkeys to their corresponding pipeline stages, ensuring strict timing alignment.
+### 4. ROM-Less Combinational S-Boxes
+Traditional S-Boxes using ROM/LUT tables can leak information through timing or power "glitches" during lookup.
+*   **Boolean Equation Logic**: All 8 S-Boxes are implemented as pure combinational boolean clouds.
+*   **Gate-Level Absorption**: During synthesis, the unmasking ($x_m \oplus m_{in}$) and re-masking ($S(x) \oplus m_{out}$) are optimized into the same physical LUTs. This prevents the "true value" $x$ from ever appearing as a stable signal on any internal wire.
 
 ---
 
 ## Project Structure
 
-All project source code is located within the `src/` directory:
-
-| File Name | Description |
+| File | Role |
 | :--- | :--- |
-| `des_top.sv` | **Top-Level Module**: Handles initial permutation (IP/IP_INV) for plaintext/ciphertext, masking initialization, and instantiates the 16-stage pipeline and key generator. |
-| `des_round.sv` | **Round Stage Module**: Implements a single pipeline stage, including register latching logic to maintain synchronous flow of data and masks. |
-| `feistel.sv` | **Masked Feistel Function**: Executes the Expansion (E), XOR with the subkey, S-Box substitution, and Permutation (P). |
-| `sbox1.sv` ~ `sbox8.sv` | **Combinational Logic S-Boxes**: 8 independent S-Box modules, each integrating boolean operations for input/output masking. |
-| `des_defines.vh` | **Hardware Constants & Permutations**: Utilizes `automatic function`s to implement IP, E, and P permutation matrices, avoiding array passing issues across different compilers. |
-| `tb_des.sv` | **Simulation Testbench**: Used to verify pipeline timing and cryptographic correctness. |
-| `Schematic.svg` | **RTL Schematic Diagram**: A visualization of the actual hardware netlist for a single round stage (`des_round_stage`), extracted via Yosys. |
-| `Architecture.md` | **ASCII Architectural Diagram**: A text-based block diagram providing developers with a quick understanding of the data flow. |
+| `src/des_top.v` | Top-level module, integrates LFSR, IP/IP_INV, and the 16-stage pipeline. |
+| `src/des_round.v` | A single registered pipeline stage. |
+| `src/feistel.v` | Masked Feistel function with E-box, S-box, and P-box logic. |
+| `src/lfsr.v` | 64-bit PRNG providing entropy for masking. |
+| `src/sbox*.v` | Combinational masked S-Box implementations (1-8). |
+| `src/des_defines.vh` | Permutation matrices and constant definitions. |
+| `Docs/Architecture.md` | Detailed data flow and mask propagation diagram. |
 
 ---
 
 ## Simulation & Verification
 
-This project supports **Icarus Verilog** (`iverilog`). The testbench includes NIST standard Known Answer Test (KAT) vectors to ensure absolute cryptographic correctness.
+The project uses NIST standard Known Answer Test (KAT) vectors for verification.
 
-### Execution Steps
+### Requirements
+*   **Icarus Verilog** (iverilog)
+*   **GTKWave** (for waveform viewing)
 
-In an environment with Icarus Verilog installed, open a terminal in the project root directory and execute:
-
-#### Verilog
+### Running Simulation
 
 ```powershell
-# Run the script
+# Windows (PowerShell)
 .\run_sim.ps1
 ```
 
-
 ```bash
-# Compile all Verilog source files and specify tb_des as the top module
-iverilog -g2012 -I src -s tb_des -o des_sim_v src/tb_des.v src/des_top.v src/des_round.v src/feistel.v src/sbox*.v src/lfsr.v
-
-
-# Execute the simulation
+# Linux/Manual
+iverilog -g2012 -I src -s tb_des -o des_sim_v src/*.v
 vvp des_sim_v
-
-# Open waveform with GTKWave
-gtkwave ./dump.vcd
 ```
 
-### Verification Vectors (NIST Standard Vectors)
-
-The testbench automatically verifies the following vectors (accounting for the 16-cycle output latency):
-
-| Test Case | Key | Plaintext | Expected Ciphertext |
-| :--- | :--- | :--- | :--- |
-| **Case 1** | `0123456789ABCDEF` | `4E6F772069732074` | `3FA40E8A984D4815` |
-| **Case 2** | `133457799BBCDFF1` | `0123456789ABCDEF` | `85E813540F0AB405` |
+### Waveform Analysis
+In `dump.vcd`, you can observe:
+1.  `plaintext` being XORed with a changing `dynamic_mask`.
+2.  `masked_plaintext` flowing through 16 stages of `des_round_stage`.
+3.  `ciphertext` emerging 16 cycles later, correctly decrypted/unmasked.
 
 ---
 
-## Security Note
+## Security Recommendations for Implementation
 
-This design features a complete "first-order boolean masking" framework. However, during simulator (`tb_des.sv`) testing, to ensure functional verification stability, we supply a fixed initial random mask (`64'hA5A5A5A55A5A5A5A`).
+1.  **True Randomness**: In a production ASIC/FPGA, replace or seed the LFSR with a **True Random Number Generator (TRNG)**.
+2.  **Synthesis Constraints**: Use `DONT_TOUCH` or `KEEP_HIERARCHY` on S-Box modules to prevent the synthesizer from "optimizing away" the masking logic (e.g., merging $x_m \oplus m$ back into $x$).
+3.  **Glitch Protection**: For higher security, consider adding "Dual-Rail with Pre-charge" or "Masked Gates with Glitch Filtering" if targeting high-order SCA resilience.
 
-For actual tape-out or FPGA deployment in high-security environments:
-1. **TRNG Integration**: The `mask_in` of `des_top` and the re-masking value `M_sbox_out` within `feistel.sv` **must** be connected to a high-quality **True Random Number Generator (TRNG)**.
-2. **Synthesis Constraints**: When performing Logic Synthesis, synthesis constraints (e.g., `Keep Hierarchy` / `Don't Touch`) must be carefully configured to prevent the synthesis tool from optimizing out the security masking logic due to aggressive optimization strategies.
+---
+
+## License
+This project is licensed under the MIT License - see the LICENSE file for details.

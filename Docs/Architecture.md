@@ -1,8 +1,6 @@
-
 # Implementation of a 16-Stage Pipelined DES Hardware Accelerator with First-Order Boolean Masking for SCA Resilience
 
-This diagram illustrates the hardware data path and key schedule as implemented in Verilog. 
-It uses standard hardware block representations.
+This diagram illustrates the hardware data path, key schedule, and the dynamic masking system as implemented in Verilog. It features a 64-bit LFSR for pseudo-random number generation to enhance side-channel resistance.
 
 ```text
 ========================================================================================================
@@ -11,16 +9,21 @@ It uses standard hardware block representations.
  
   Plaintext (64)          Mask In (64)                           Key (64)
        │                       │                                     │
-       │     ┌─────────┐       ├─────────────────────────┐           │
-       └────►│   XOR   │◄──────┘                         │           ▼
-             └────┬────┘                                 │        [ PC-1 ] (Parity drop)
-                  │ P_masked = P ^ Mask_In               │           │
-                  ▼                                      ▼           │ 56-bit Key
-            [ IP (Data) ]                          [ IP (Mask) ]     │
-                  │                                      │           │
-           ┌──────┴──────┐                        ┌──────┴──────┐    ▼ 
-           │             │                        │             │  [KEY SCHEDULE]
-    L0_masked (32)   R0_masked (32)            ML0 (32)      MR0 (32)  (Parallel)
+       │                       ▼                                     ▼
+       │                 ┌───────────┐                        [ PC-1 ] (Parity drop)
+       │                 │  LFSR 64  │                               │
+       │                 └─────┬─────┘                               │ 56-bit Key
+       │                       │ lfsr_out                            │
+       │     ┌─────────┐       ▼                                     │
+       └────►│   XOR   │◄─────(XOR)                                   ▼ 
+             └────┬────┘       │                                [KEY SCHEDULE]
+                  │            │ Dynamic Mask                      (Parallel)
+                  ▼            ▼
+            [ IP (Data) ]                          [ IP (Mask) ]
+                  │                                      │
+           ┌──────┴──────┐                        ┌──────┴──────┐    
+           │             │                        │             │   
+    L0_masked (32)   R0_masked (32)            ML0 (32)      MR0 (32)
 
 
 ========================================================================================================
@@ -44,7 +47,7 @@ It uses standard hardware block representations.
            │     │   │   |      └─────►(XOR)◄───────────────┘         |
            │     │   │   |               │     │                      |
            │     │   │   |               ▼     ▼                      |
-           │     │   │   |      [ 8 x Boolean Masked S-Box ]◄─(Re-Mask Value generated from MR_in)
+           │     │   │   |      [ 8 x Boolean Masked S-Box ]◄─────────┼─(Re-Mask: rnd_mask from LFSR)
            │     │   │   |               │     │                      |
            │     │   │   |               ▼     ▼                      |
            │     │   │   |            [ P-Box ]                       |

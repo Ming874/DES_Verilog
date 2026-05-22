@@ -1,40 +1,45 @@
-# Overview of DES
+# DES Algorithm Overview
 
-- [**Ref: geeksforgeeks**](https://www.geeksforgeeks.org/computer-networks/data-encryption-standard-des-set-1/)
-
-## Structure Overview
-![image](https://hackmd.io/_uploads/BkVArzJT-l.png)
-![image](https://hackmd.io/_uploads/SkaJ1Xy6Wx.png)
+High-level summary of the Data Encryption Standard (DES) process.
 
 ---
 
-## Encryption Procedure
+## 1. Initial Processing (IP)
+*   **Input**: 64-bit Plaintext.
+*   **Permutation**: Rearranges bits according to the IP table.
+*   **Split**: Divided into **$L_0$** (32-bit) and **$R_0$** (32-bit).
 
-### 1. IP (Initial Permutation)
+---
 
-Divides the Plain/Cipher Text to:
-- $LH_0$ (Even, 32 bits)
-- $RH_0$ (Odd, 32 bits)
-
-### 2. Iterate Feistel Cipher (the steps below) for 16 Rounds
-
+## 2. 16 Rounds of Feistel Cipher
+Each round $i$ follows these equations:
 $$\begin{cases} 
-LH_i = RH_{i-1} \\ 
-RH_i = LH_{i-1} \oplus F(RH_{i-1}, K_i) 
+L_i = R_{i-1} \\ 
+R_i = L_{i-1} \oplus F(R_{i-1}, K_i) 
 \end{cases}$$
 
-- The procedure of round function F() 
-    1. Expansion, 32 to 48 bits $\to$ **Diffusion**
-    2. XOR with Key (48 bits)
-    3. Substitution (Sbox $\times$ 8) $\to$ **Confusion**
-            48 (6 $\times$ 8) bits $\to$ 32 (4 $\times$ 8) bits
-            e.g. **1**0010**1** $\to$ Row 3, Column 2
-    4. Permutation: 32 $\to$ 32 bits
+### The Round Function $F(R, K)$
+1.  **Expansion (E)**: 32 $\to$ 48 bits. (**Diffusion**)
+2.  **Key XOR**: XOR result with 48-bit subkey $K_i$.
+3.  **Substitution (S-Box)**: 48 $\to$ 32 bits using 8 S-Boxes. (**Confusion**)
+4.  **Permutation (P)**: Scrambles the 32-bit output.
 
-- Key Schedule
-    1. IP (PC-1): 64 bits $\to$ 8 parity bits + $C_0$ (28 bits) + $D_0$ (28 bits)
-    2. Circular Left Shift (1 or 2 bits based on round)
-    3. PC-2: Compress the key from 56 to 48 bits $\to$ $K_i$
+---
 
-### 3. $IP^{-1}$
-### 4. Inverse $L_H$, $R_H$
+## 3. Key Schedule
+Generates 16 subkeys ($K_1$ to $K_{16}$) from a 64-bit master key:
+1.  **PC-1**: Discards 8 parity bits (64 $\to$ 56 bits).
+2.  **Split & Shift**: Divide into two 28-bit halves; circular left shift (1 or 2 bits per round).
+3.  **PC-2**: Selects 48 bits from the shifted halves to form subkey $K_i$.
+
+---
+
+## 4. Final Processing
+1.  **32-bit Swap**: Swap the final halves ($R_{16}, L_{16}$).
+2.  **Inverse IP ($IP^{-1}$)**: The final permutation to produce 64-bit Ciphertext.
+
+---
+
+## Structure Reference
+![Architecture](https://hackmd.io/_uploads/BkVArzJT-l.png)
+*(Ref: [GeeksforGeeks](https://www.geeksforgeeks.org/computer-networks/data-encryption-standard-des-set-1/))*
