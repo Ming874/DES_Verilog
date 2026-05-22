@@ -3,11 +3,14 @@
 module des_top (
     input clk,                 // System clock
     input rst_n,               // Asynchronous active-low reset
+    input in_valid,            // Input valid signal
+
     input [63:0] plaintext,    // 64-bit plaintext input
     input [63:0] key,          // 64-bit key input
     input [63:0] mask_in,      // 64-bit initial random mask for SCA defense
+
     output [63:0] ciphertext,  // 64-bit ciphertext output
-    output done                // Done signal, indicating valid pipeline output
+    output out_valid           // Output valid signal
 );
 
 
@@ -48,11 +51,16 @@ module des_top (
     wire [543:0] ML_stages;
     wire [543:0] MR_stages;
 
+    wire [16:0] valid_stages;
+
     // Initialize the input data of stage 0
     assign L_stages[31:0] = L0_masked;
     assign R_stages[31:0] = R0_masked;
     assign ML_stages[31:0] = ML0;
     assign MR_stages[31:0] = MR0;
+
+    // Initialize valid of stage 0
+    assign valid_stages[0] = in_valid;
 
     // Use generate block to instantiate 16 independent DES round modules
     genvar i;
@@ -61,18 +69,28 @@ module des_top (
             des_round_stage stage (
                 .clk(clk),
                 .rst_n(rst_n),
+
                 .L_in(L_stages[(i*32)+31:(i*32)]),
                 .R_in(R_stages[(i*32)+31:(i*32)]),
                 .ML_in(ML_stages[(i*32)+31:(i*32)]),
                 .MR_in(MR_stages[(i*32)+31:(i*32)]),
+
                 .K_in(subkeys[(i*48)+47:(i*48)]), // Feed the corresponding round subkey
+
+                .in_valid(valid_stages[i]),
+
                 .L_out(L_stages[((i+1)*32)+31:((i+1)*32)]),
                 .R_out(R_stages[((i+1)*32)+31:((i+1)*32)]),
                 .ML_out(ML_stages[((i+1)*32)+31:((i+1)*32)]),
-                .MR_out(MR_stages[((i+1)*32)+31:((i+1)*32)])
+                .MR_out(MR_stages[((i+1)*32)+31:((i+1)*32)]),
+
+                .out_valid(valid_stages[i+1])
             );
         end
     endgenerate
+
+    // Final pipeline output
+    assign out_valid = valid_stages[16];
 
     // 5. Final Inverse Permutation (IP_INV)
     wire [63:0] pre_fp_masked = {R_stages[(16*32)+31:(16*32)], L_stages[(16*32)+31:(16*32)]};
@@ -84,14 +102,6 @@ module des_top (
 
     // Remove the mask at the last moment of module output to recover the true ciphertext.
     assign ciphertext = fp_masked_data ^ fp_mask;
-
-    // Done Signal Generation: Use a shift register to track data flow through the 16-stage pipeline, outputting a valid signal after 16 cycles delay.
-    reg [15:0] done_pipe;
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) done_pipe <= 16'b0;
-        else done_pipe <= {done_pipe[14:0], 1'b1};
-    end
-    assign done = done_pipe[15];
 
 endmodule
 
