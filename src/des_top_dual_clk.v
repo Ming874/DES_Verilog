@@ -17,7 +17,7 @@ module des_top_dual_clk (
     output reg done            // Valid signal (clk_slow domain)
 );
 
-    `include "des_defines.vh"
+`include "des_defines.vh"
 
     // --- clk_slow Domain: Input Sampling & Start Signal ---
     reg [63:0] p_reg, k_reg, m_reg;
