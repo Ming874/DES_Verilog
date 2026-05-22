@@ -7,18 +7,20 @@
 // =============================================================================
 
 module des_round_stage (
-    input clk,             // System clock
-    input rst_n,           // Asynchronous active-low reset
-    input [31:0] L_in,     // LH masked data
-    input [31:0] R_in,     // RH masked data
-    input [31:0] ML_in,    // LH corresponding mask
-    input [31:0] MR_in,    // RH corresponding mask
-    input [47:0] K_in,     // 48-bit subkey for the current round
+    input clk,                  // System clock
+    input rst_n,                // Asynchronous active-low reset
+    input [31:0] L_in,          // LH masked data
+    input [31:0] R_in,          // RH masked data
+    input [31:0] ML_in,         // LH corresponding mask
+    input [31:0] MR_in,         // RH corresponding mask
+    input [47:0] K_in,          // 48-bit subkey for the current round
+    input in_valid,             // Input valid signal
 
-    output reg [31:0] L_out, // Updated LH masked data
-    output reg [31:0] R_out, // Updated RH masked data
-    output reg [31:0] ML_out,// Updated LH mask
-    output reg [31:0] MR_out // Updated RH mask
+    output reg [31:0] L_out,    // Updated LH masked data
+    output reg [31:0] R_out,    // Updated RH masked data
+    output reg [31:0] ML_out,   // Updated LH mask
+    output reg [31:0] MR_out,   // Updated RH mask
+    output reg out_valid        // Output valid signal
 );
 
     wire [31:0] f_out;     // Masked output data from the Feistel function
@@ -40,8 +42,12 @@ module des_round_stage (
             R_out <= 32'b0;
             ML_out <= 32'b0;
             MR_out <= 32'b0;
+            out_valid <= 1'b0;
         end
         else begin
+            // valid signal follows the pipeline latency
+            out_valid <= in_valid;
+
             // L_i = R_{i-1}
             L_out <= R_in;              // 資料運算
             ML_out <= MR_in;            // 掩碼運算
