@@ -58,7 +58,7 @@ In an environment with Icarus Verilog installed, open a terminal in the project 
 
 ```bash
 # Compile all Verilog source files and specify tb_des as the top module
-iverilog -g2012 -I src -s tb_des -o des_sim_v src/v/tb_des.v src/v/des_top.v src/v/des_round.v src/v/feistel.v src/v/sbox*.v 
+iverilog -g2012 -I src -s tb_des -o des_sim_v src/tb_des.v src/des_top.v src/des_round.v src/feistel.v src/sbox*.v 
 
 
 # Execute the simulation
