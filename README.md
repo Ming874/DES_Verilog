@@ -54,12 +54,30 @@ This project supports **Icarus Verilog** (`iverilog`). The testbench includes NI
 
 In an environment with Icarus Verilog installed, open a terminal in the project root directory and execute:
 
+#### SystemVerilog
+
 ```bash
 # Compile all SystemVerilog source files and specify tb_des as the top module
 iverilog -g2012 -I src -s tb_des -o des_sim src/tb_des.sv src/des_top.sv src/des_round.sv src/feistel.sv src/sbox*.sv
 
 # Execute the simulation
 vvp des_sim
+
+# Open waveform with GTKWave
+gtkwave ./dump.vcd
+```
+#### Verilog
+
+```bash
+# Compile all Verilog source files and specify tb_des as the top module
+iverilog -g2012 -I src -s tb_des -o des_sim_v src/v/tb_des.v src/v/des_top.v src/v/des_round.v src/v/feistel.v src/v/sbox*.v 
+
+
+# Execute the simulation
+vvp des_sim_v
+
+# Open waveform with GTKWave
+gtkwave ./dump.vcd
 ```
 
 ### Verification Vectors (NIST Standard Vectors)
