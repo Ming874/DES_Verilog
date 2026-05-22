@@ -51,30 +51,41 @@ Traditional S-Boxes using ROM/LUT tables can leak information through timing or 
 
 ## Simulation & Verification
 
-The project uses NIST standard Known Answer Test (KAT) vectors for verification.
+The project uses an automated verification workflow to ensure cryptographic correctness.
+
+### Automated Verification Workflow
+1.  **Hardware Simulation**: `tb_des.v` runs 16 NIST standard test vectors through the 16-stage pipeline. It uses a **hardware LFSR** to provide real-time random masks for each case.
+2.  **Output Capture**: All simulation inputs (PT, KEY, MASK) and outputs (CT) are captured in `output.txt` with cycle-accurate timestamps.
+3.  **Python Validation**: A Python script (`verify_tb.py`) parses the simulation log, calculates the expected DES results using the `pycryptodome` library, and compares them against the hardware output.
 
 ### Requirements
 *   **Icarus Verilog** (iverilog)
+*   **Python 3.x**
+*   **PyCryptodome** (`pip install pycryptodome`)
 *   **GTKWave** (for waveform viewing)
 
 ### Running Simulation
 
+The provided scripts automate the compilation, simulation, and verification steps. **Note: These scripts should be executed from within the `Scripts/` directory.**
+
+#### Windows (PowerShell)
 ```powershell
-# Windows (PowerShell)
+cd Scripts
 .\run_sim.ps1
 ```
 
+#### Linux / macOS (Bash)
 ```bash
-# Linux/Manual
-iverilog -g2012 -I src -s tb_des -o des_sim_v src/*.v
-vvp des_sim_v
+cd Scripts
+chmod +x run_sim.sh
+./run_sim.sh
 ```
 
 ### Waveform Analysis
 In `dump.vcd`, you can observe:
-1.  `plaintext` being XORed with a changing `dynamic_mask`.
+1.  `plaintext` being XORed with a changing `lfsr_mask`.
 2.  `masked_plaintext` flowing through 16 stages of `des_round_stage`.
-3.  `ciphertext` emerging 16 cycles later, correctly decrypted/unmasked.
+3.  `ciphertext` emerging 16 cycles later, correctly unmasked.
 
 ---
 
