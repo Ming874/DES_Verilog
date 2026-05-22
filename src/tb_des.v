@@ -57,9 +57,11 @@ module tb_des;
             plaintext = 64'h4E6F772069732074 + i;
             @(posedge clk);
         end
+
+        in_valid = 0;
         
         // Wait for last data to exit pipeline
-        repeat(20) @(posedge clk);
+        repeat(16) @(posedge clk);
 
         $display("--- Streaming Test Finished ---");
         $finish;
